@@ -3,5 +3,5 @@ module.exports = {
 	SESSION_SECRET: 'some secret value',
 	SENDGRID_API_KEY: 'SG.Vz-SdxztTCGUpjWlH5aSDw.NGGYvyKmvzW7HxlxG16zdNJ7DUbPjVdwowSKxgwvkYw',
 	EMAIL_FROM: 'orlov.marsel@ya.ru',
-	BASE_URL: 'http://localhost:3000/'
+	BASE_URL: 'http://localhost:3000'
 }

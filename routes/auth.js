@@ -4,7 +4,9 @@ const nodemailer = require('nodemailer')
 const sendgrid = require('nodemailer-sendgrid-transport')
 const User = require('../models/user')
 const keys = require('../keys')
+const crypto = require('crypto')
 const regEmail = require('../emails/registration')
+const resetEmail = require('../emails/reset')
 const router = Router()
 
 const transporter = nodemailer.createTransport(sendgrid({
@@ -73,6 +75,73 @@ router.post('/register', async (req, res) => {
       await transporter.sendMail(regEmail(email))
       res.redirect('/auth/login#login')
     }
+  } catch (e) {
+    console.log(e)
+  }
+})
+
+router.get('/reset', async (req, res) => {
+  res.render('auth/reset', {
+    title: 'Забыли пароль?',
+    error: req.flash('error')
+  })
+})
+
+router.get('/password/:token', async (req, res) => {
+  if (!req.params.token) {
+    return res.redirect('/auth/login')
+  }
+
+  try {
+
+    const user = await User.findOne({
+      resetToken: req.params.token,
+      resetTokenExp: {$gt: Date.now()}
+    })
+
+    if (!user) {
+      return res.redirect('/auth/login')
+    } else {
+      res.render('auth/password', {
+        title: 'Восстановить доступ',
+        error: req.flash('error'),
+        userId: user._id.toString(),
+        token: req.params.token
+      })
+    }
+
+  } catch (e) {
+    console.log(e)
+  }
+
+})
+
+router.post('/reset', (req, res) => {
+  try {
+    crypto.randomBytes(32, async (err, buffer) => {
+
+      if (err) {
+        req.flash('error', 'Что-то пошло не так, повторите попытку позже')
+        return res.redirect('/auth/reset')
+      }
+
+      const token = buffer.toString('hex')
+      const candidate = await User.findOne({ email: req.body.email })
+
+      if (candidate) {
+        
+        candidate.resetToken = token
+        candidate.resetTokenExp = Date.now() + 60 * 60 * 1000
+
+        await candidate.save()
+        await transporter.sendMail(resetEmail(candidate.email, token))
+        return res.redirect('/auth/login')
+      } else {
+        req.flash('error', 'Такого email адреса не существует')
+        return res.redirect('/auth/reset')
+      }
+
+    })
   } catch (e) {
     console.log(e)
   }
