@@ -1,5 +1,7 @@
-const {Router} = require('express')
+const { Router } = require('express')
 const bcrypt = require('bcryptjs')
+const { validationResult } = require('express-validator/check')
+const { registerValidators } = require('../utils/validators')
 const nodemailer = require('nodemailer')
 const sendgrid = require('nodemailer-sendgrid-transport')
 const User = require('../models/user')
@@ -7,10 +9,11 @@ const keys = require('../keys')
 const crypto = require('crypto')
 const regEmail = require('../emails/registration')
 const resetEmail = require('../emails/reset')
+const { serialize } = require('v8')
 const router = Router()
 
 const transporter = nodemailer.createTransport(sendgrid({
-  auth: {api_key: keys.SENDGRID_API_KEY}
+  auth: { api_key: keys.SENDGRID_API_KEY }
 }))
 
 router.get('/login', async (req, res) => {
@@ -30,7 +33,7 @@ router.get('/logout', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const {email, password} = req.body
+    const { email, password } = req.body
     const candidate = await User.findOne({ email })
 
     if (candidate) {
@@ -58,23 +61,26 @@ router.post('/login', async (req, res) => {
   }
 })
 
-router.post('/register', async (req, res) => {
+router.post('/register', registerValidators, async (req, res) => {
   try {
-    const {email, password, repeat, name} = req.body
-    const candidate = await User.findOne({ email })
+    const { email, password, name } = req.body
 
-    if (candidate) {
-      req.flash('registerError', 'Пользователь с таким email уже существует')
-      res.redirect('/auth/login#register')
-    } else {
-      const hashPassword = await bcrypt.hash(password, 10)
-      const user = new User({
-        email, name, password: hashPassword, cart: {items: []}
-      })
-      await user.save()
-      await transporter.sendMail(regEmail(email))
-      res.redirect('/auth/login#login')
+    const errors = validationResult(req)
+
+    if (!errors.isEmpty()) {
+      req.flash('registerError', errors.array()[0].msg)
+      return res.status(422).redirect('/auth/login#register')
     }
+
+    const hashPassword = await bcrypt.hash(password, 10)
+
+    const user = new User({
+      email, name, password: hashPassword, cart: { items: [] }
+    })
+
+    await user.save()
+    await transporter.sendMail(regEmail(email))
+    res.redirect('/auth/login#login')
   } catch (e) {
     console.log(e)
   }
@@ -96,7 +102,7 @@ router.get('/password/:token', async (req, res) => {
 
     const user = await User.findOne({
       resetToken: req.params.token,
-      resetTokenExp: {$gt: Date.now()}
+      resetTokenExp: { $gt: Date.now() }
     })
 
     if (!user) {
@@ -129,7 +135,7 @@ router.post('/reset', (req, res) => {
       const candidate = await User.findOne({ email: req.body.email })
 
       if (candidate) {
-        
+
         candidate.resetToken = token
         candidate.resetTokenExp = Date.now() + 60 * 60 * 1000
 
@@ -142,6 +148,31 @@ router.post('/reset', (req, res) => {
       }
 
     })
+  } catch (e) {
+    console.log(e)
+  }
+})
+
+router.post('/password', async (req, res) => {
+  try {
+
+    const user = await User.findOne({
+      _id: req.body.userId,
+      resetToken: req.body.token,
+      resetTokenExp: { $gt: Date.now() }
+    })
+
+    if (user) {
+      user.password = await bcrypt.hash(req.body.password, 10)
+      user.resetToken = undefined
+      user.resetTokenExp = undefined
+      await user.save()
+      res.redirect('/auth/login')
+    } else {
+      req.flash('loginError', 'Время жизни токена истекло')
+      res.redirect('/auth/login')
+    }
+
   } catch (e) {
     console.log(e)
   }

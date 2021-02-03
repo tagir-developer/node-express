@@ -18,13 +18,17 @@ const varMiddleware = require('./middleware/variables')
 const userMiddleware = require('./middleware/user')
 const keys = require('./keys')
 
+// Angular img - https://vorotapenzy58.ru/wp-content/uploads/2019/11/Angular-1.png
+// Vue img - https://itproger.com/img/tests/vue-js.svg
+
 const PORT = process.env.PORT || 3000
 
 const app = express()
 const hbs = exphbs.create({
   defaultLayout: 'main',
   extname: 'hbs',
-  handlebars: allowInsecurePrototypeAccess(Handlebars)
+  handlebars: allowInsecurePrototypeAccess(Handlebars),
+  helpers: require('./utils/hbs-helper')
 })
 const store = new MongoStore({
   collection: 'sessions',
