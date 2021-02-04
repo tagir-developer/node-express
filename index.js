@@ -10,13 +10,16 @@ const session = require('express-session')
 const MongoStore = require('connect-mongodb-session')(session)
 const homeRoutes = require('./routes/home')
 const cardRoutes = require('./routes/card')
+const profileRoutes = require('./routes/profile')
 const addRoutes = require('./routes/add')
 const ordersRoutes = require('./routes/orders')
 const coursesRoutes = require('./routes/courses')
 const authRoutes = require('./routes/auth')
 const varMiddleware = require('./middleware/variables')
 const userMiddleware = require('./middleware/user')
+const fileMiddleware = require('./middleware/file')
 const keys = require('./keys')
+const errorHandler = require('./middleware/error')
 
 // Angular img - https://vorotapenzy58.ru/wp-content/uploads/2019/11/Angular-1.png
 // Vue img - https://itproger.com/img/tests/vue-js.svg
@@ -47,6 +50,7 @@ app.use(session({
   saveUninitialized: false,
   store
 }))
+app.use(fileMiddleware.single('avatar'))
 app.use(csrf())
 app.use(flash())
 app.use(varMiddleware)
@@ -58,6 +62,9 @@ app.use('/courses', coursesRoutes)
 app.use('/card', cardRoutes)
 app.use('/orders', ordersRoutes)
 app.use('/auth', authRoutes)
+app.use('/profile', profileRoutes)
+
+app.use(errorHandler)
 
 async function start() {
   try {
