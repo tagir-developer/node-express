@@ -8,6 +8,8 @@ const exphbs = require('express-handlebars')
 const { allowInsecurePrototypeAccess } = require('@handlebars/allow-prototype-access')
 const session = require('express-session')
 const MongoStore = require('connect-mongodb-session')(session)
+const helmet = require('helmet')
+const compression = require('compression')
 const homeRoutes = require('./routes/home')
 const cardRoutes = require('./routes/card')
 const profileRoutes = require('./routes/profile')
@@ -43,6 +45,7 @@ app.set('view engine', 'hbs')
 app.set('views', 'views')
 
 app.use(express.static(path.join(__dirname, 'public')))
+app.use('/images', express.static(path.join(__dirname, 'images')))
 app.use(express.urlencoded({extended: true}))
 app.use(session({
   secret: keys.SESSION_SECRET,
@@ -53,6 +56,13 @@ app.use(session({
 app.use(fileMiddleware.single('avatar'))
 app.use(csrf())
 app.use(flash())
+// app.use(helmet())
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
+app.use(compression())
 app.use(varMiddleware)
 app.use(userMiddleware)
 

@@ -61,4 +61,4 @@ if ($card) {
   })
 } 
 
-M.Tabs.init(document.querySelectorAll('.tabs'))
+М.Tabs.init(document.querySelectorAll('.tabs'))
